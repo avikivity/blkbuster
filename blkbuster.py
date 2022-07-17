@@ -24,6 +24,11 @@ max_offset = 0
 width = 3840
 height = 2160
 
+inset_width = width * 8 // 10
+inset_height = height * 8 // 10
+inset_col = width // 10
+inset_row = height // 10
+
 time = 0.0
 next_frame = time + frame_time
 for line in sys.stdin.readlines():
@@ -42,9 +47,9 @@ for line in sys.stdin.readlines():
     max_offset = max(max_offset, offset + size)
 
 def row_col(offset):
-    frac_row = offset / max_offset * height
+    frac_row = inset_row + offset / max_offset * inset_height
     row = int(frac_row)
-    col = int((frac_row - row) * width)
+    col = inset_col + int((frac_row - row) * inset_width) 
     return row, col
 
 direction_color = {
@@ -62,9 +67,9 @@ def make_frame(frame):
         r2, c2 = row_col(io.offset + io.size - 1)
         fill=direction_color[io.direction]
         while r1 != r2:
-            draw.line([(c1, r1), (width-1, r1)], fill=fill, width=3)
+            draw.line([(c1, r1), (inset_width-1, r1)], fill=fill, width=3)
             r1 += 1
-            c1 = 0
+            c1 = inset_col
         draw.line([(c1, r1), (c2, r2)], fill=fill, width=3)
     return numpy.asarray(img)
 
