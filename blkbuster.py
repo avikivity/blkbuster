@@ -60,7 +60,12 @@ def make_frame(frame):
     for io in frame:
         r1, c1 = row_col(io.offset)
         r2, c2 = row_col(io.offset + io.size - 1)
-        draw.line([(c1, r1), (c2, r2)], fill=direction_color[io.direction], width=3)
+        fill=direction_color[io.direction]
+        while r1 != r2:
+            draw.line([(c1, r1), (width-1, r1)], fill=fill, width=3)
+            r1 += 1
+            c1 = 0
+        draw.line([(c1, r1), (c2, r2)], fill=fill, width=3)
     return numpy.asarray(img)
 
 clip = DataVideoClip(frames, make_frame, fps=frame_rate)
