@@ -4,9 +4,11 @@ import sys
 import re
 import collections
 import numpy
+import math
 import PIL
 import PIL.Image
 import PIL.ImageDraw
+import PIL.ImageColor
 from moviepy.video.VideoClip import VideoClip, DataVideoClip
 import bisect
 import argparse
@@ -34,6 +36,9 @@ frame_rate = args.frame_rate
 frame_time = 1 / frame_rate
 
 max_offset = 0
+
+fade_decay_time = 0.08
+fade_window_time = 0.5
 
 width = args.width
 height = args.height
@@ -71,8 +76,17 @@ direction_color = {
     'D': 'red',
 }
 
+direction_color = {k: PIL.ImageColor.getrgb(direction_color[k]) for k in direction_color}
+
+white = PIL.ImageColor.getrgb('white')
+
+def blend(intensity, c1, c2):
+    def blend_component(n):
+        return int(intensity*c1[n] + (1-intensity)*c2[2])
+    return (blend_component(0), blend_component(1), blend_component(2))
+
 def make_frame(t):
-    start_time = t - frame_time
+    start_time = t - (fade_window_time + frame_time)
     end_time = t
     img = PIL.Image.new(mode='RGB', size=(width, height), color='white')
     # f = numpy.full(shape=(height, width, 3), fill_value=255, dtype=numpy.uint8)
@@ -82,7 +96,8 @@ def make_frame(t):
     for io in timeline[left_bound:right_bound]:
         r1, c1 = row_col(io.offset)
         r2, c2 = row_col(io.offset + io.size - 1)
-        fill=direction_color[io.direction]
+        intensity = math.exp(-(t - io.time) / fade_decay_time)
+        fill = blend(intensity, direction_color[io.direction], white)
         while r1 != r2:
             draw.rounded_rectangle([(c1-2, r1-2), (inset_col + inset_width-1+2, r1+2)], fill=fill, radius=2)
             r1 += 1
