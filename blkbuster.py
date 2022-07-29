@@ -48,6 +48,9 @@ inset_height = height * 8 // 10
 inset_col = width // 10
 inset_row = height // 10
 
+
+io_radius = int(math.ceil(width/1000))
+
 time = 0.0
 next_frame = time + frame_time
 for line in open(args.input).readlines():
@@ -93,16 +96,17 @@ def make_frame(t):
     draw = PIL.ImageDraw.Draw(img)
     left_bound = bisect.bisect_right(timeline, start_time, key=lambda io: io.time)
     right_bound = bisect.bisect_right(timeline, end_time, key=lambda io: io.time)
+    rd = io_radius
     for io in timeline[left_bound:right_bound]:
         r1, c1 = row_col(io.offset)
         r2, c2 = row_col(io.offset + io.size - 1)
         intensity = math.exp(-(t - io.time) / fade_decay_time)
         fill = blend(intensity, direction_color[io.direction], white)
         while r1 != r2:
-            draw.rounded_rectangle([(c1-2, r1-2), (inset_col + inset_width-1+2, r1+2)], fill=fill, radius=2)
+            draw.rounded_rectangle([(c1-rd, r1-rd), (inset_col + inset_width-1+rd, r1+rd)], fill=fill, radius=rd)
             r1 += 1
             c1 = inset_col
-        draw.rounded_rectangle([(c1-2, r1-2), (c2+2, r2+2)], fill=fill, radius=2)
+        draw.rounded_rectangle([(c1-rd, r1-rd), (c2+rd, r2+rd)], fill=fill, radius=rd)
     return numpy.asarray(img)
 
 clip = VideoClip(make_frame, duration=timeline[-1].time)
