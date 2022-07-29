@@ -8,6 +8,15 @@ import PIL
 import PIL.Image
 import PIL.ImageDraw
 from moviepy.video.VideoClip import VideoClip, DataVideoClip
+import argparse
+
+argparser = argparse.ArgumentParser(prog='blkbuster',
+                                    description='Convert blkparse output to funky videos')
+argparser.add_argument('-r', '--frame-rate', metavar='FPS', type=int, default=60)
+argparser.add_argument('-x', '--width', metavar='PIXELS', type=int, default=3840)
+argparser.add_argument('-y', '--height', metavar='PIXELS', type=int, default=2160)
+
+args = argparser.parse_args()
 
 # blkparse line with a Q entry (queued) and RWD (read/write/discard) op
 line_re = re.compile(r'^[\d,]+\s+\d+\s+\d+\s+([\d\.]+)\s+\d+\s+Q\s+([RWD])S?M?\s+(\d+) \+ (\d+).*')
@@ -15,14 +24,14 @@ line_re = re.compile(r'^[\d,]+\s+\d+\s+\d+\s+([\d\.]+)\s+\d+\s+Q\s+([RWD])S?M?\s
 io = collections.namedtuple('io', ('offset', 'size', 'direction'))
 frames = [[]] # of array of io
 
-frame_rate = 60
+frame_rate = args.frame_rate
 
 frame_time = 1 / frame_rate
 
 max_offset = 0
 
-width = 3840
-height = 2160
+width = args.width
+height = args.height
 
 inset_width = width * 8 // 10
 inset_height = height * 8 // 10
