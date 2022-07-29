@@ -16,6 +16,10 @@ argparser = argparse.ArgumentParser(prog='blkbuster',
 argparser.add_argument('-r', '--frame-rate', metavar='FPS', type=int, default=60)
 argparser.add_argument('-x', '--width', metavar='PIXELS', type=int, default=3840)
 argparser.add_argument('-y', '--height', metavar='PIXELS', type=int, default=2160)
+argparser.add_argument('input', metavar='INPUT',
+                       help='Input file (blkparse output)')
+argparser.add_argument('output', metavar='OUTPUT',
+                       help='Output file (video clip)')
 
 args = argparser.parse_args()
 
@@ -41,7 +45,7 @@ inset_row = height // 10
 
 time = 0.0
 next_frame = time + frame_time
-for line in sys.stdin.readlines():
+for line in open(args.input).readlines():
     m = re.match(line_re, line)
     if not m:
         continue
@@ -88,4 +92,4 @@ def make_frame(t):
 
 clip = VideoClip(make_frame, duration=timeline[-1].time)
 
-clip.write_videofile('blkbuster.avi', codec='libx264', fps=frame_rate, audio=False)
+clip.write_videofile(args.output, codec='libx264', fps=frame_rate, audio=False)
