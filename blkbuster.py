@@ -18,6 +18,8 @@ argparser = argparse.ArgumentParser(prog='blkbuster',
 argparser.add_argument('-r', '--frame-rate', metavar='FPS', type=int, default=60)
 argparser.add_argument('-x', '--width', metavar='PIXELS', type=int, default=3840)
 argparser.add_argument('-y', '--height', metavar='PIXELS', type=int, default=2160)
+argparser.add_argument('-s', '--stripes', metavar='STRIPES', type=int, default=500,
+                       help='how many stripes to divide the display into')
 argparser.add_argument('input', metavar='INPUT',
                        help='Input file (blkparse output)')
 argparser.add_argument('output', metavar='OUTPUT',
@@ -43,6 +45,9 @@ fade_window_time = 0.5
 width = args.width
 height = args.height
 
+logical_height = args.stripes
+logical_width = logical_height * width/height
+
 inset_width = width * 8 // 10
 inset_height = height * 8 // 10
 inset_col = width // 10
@@ -67,11 +72,15 @@ for line in open(args.input).readlines():
 
 timeline.sort(key=lambda io: io.time)
 
-def row_col(offset):
-    frac_row = inset_row + offset / max_offset * inset_height
+def logical_row_col(offset):
+    frac_row = offset / max_offset * logical_height
     row = int(frac_row)
-    col = inset_col + int((frac_row - row) * inset_width) 
+    col = (frac_row - row) * logical_width
     return row, col
+
+def logical_to_screen(lrow, lcol):
+    return (int(inset_row + inset_height * lrow/logical_height),
+            int(inset_col + inset_width * lcol/logical_width))
 
 direction_color = {
     'R': 'green',
@@ -98,15 +107,18 @@ def make_frame(t):
     right_bound = bisect.bisect_right(timeline, end_time, key=lambda io: io.time)
     rd = io_radius
     for io in timeline[left_bound:right_bound]:
-        r1, c1 = row_col(io.offset)
-        r2, c2 = row_col(io.offset + io.size - 1)
+        r1, c1 = logical_row_col(io.offset)
+        r2, c2 = logical_row_col(io.offset + io.size - 1)
         intensity = math.exp(-(t - io.time) / fade_decay_time)
         fill = blend(intensity, direction_color[io.direction], white)
         while r1 != r2:
-            draw.rounded_rectangle([(c1-rd, r1-rd), (inset_col + inset_width-1+rd, r1+rd)], fill=fill, radius=rd)
+            sr1, sc1 = logical_to_screen(r1, c1)
+            draw.rounded_rectangle([(sc1-rd, sr1-rd), (inset_col + inset_width-1+rd, sr1+rd)], fill=fill, radius=rd)
             r1 += 1
-            c1 = inset_col
-        draw.rounded_rectangle([(c1-rd, r1-rd), (c2+rd, r2+rd)], fill=fill, radius=rd)
+            c1 = 0
+        sr1, sc1 = logical_to_screen(r1, c1)
+        sr2, sc2 = logical_to_screen(r2, c2)
+        draw.rounded_rectangle([(sc1-rd, sr1-rd), (sc2+rd, sr2+rd)], fill=fill, radius=rd)
     return numpy.asarray(img)
 
 clip = VideoClip(make_frame, duration=timeline[-1].time)
