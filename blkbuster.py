@@ -8,6 +8,7 @@ import PIL
 import PIL.Image
 import PIL.ImageDraw
 from moviepy.video.VideoClip import VideoClip, DataVideoClip
+import bisect
 import argparse
 
 argparser = argparse.ArgumentParser(prog='blkbuster',
@@ -21,8 +22,8 @@ args = argparser.parse_args()
 # blkparse line with a Q entry (queued) and RWD (read/write/discard) op
 line_re = re.compile(r'^[\d,]+\s+\d+\s+\d+\s+([\d\.]+)\s+\d+\s+Q\s+([RWD])S?M?\s+(\d+) \+ (\d+).*')
 
-io = collections.namedtuple('io', ('offset', 'size', 'direction'))
-frames = [[]] # of array of io
+io = collections.namedtuple('io', ('time', 'offset', 'size', 'direction'))
+timeline = [] # of array of io
 
 frame_rate = args.frame_rate
 
@@ -48,12 +49,11 @@ for line in sys.stdin.readlines():
     time = float(time)
     offset = int(offset)
     size = int(size)
-    this_io = io(offset, size, direction)
-    while time >= next_frame:
-        frames.append([])
-        next_frame += frame_time
-    frames[-1].append(this_io)
+    this_io = io(time, offset, size, direction)
+    timeline.append(this_io)
     max_offset = max(max_offset, offset + size)
+
+timeline.sort(key=lambda io: io.time)
 
 def row_col(offset):
     frac_row = inset_row + offset / max_offset * inset_height
@@ -67,11 +67,15 @@ direction_color = {
     'D': 'red',
 }
 
-def make_frame(frame):
+def make_frame(t):
+    start_time = t - frame_time
+    end_time = t
     img = PIL.Image.new(mode='RGB', size=(width, height), color='white')
     # f = numpy.full(shape=(height, width, 3), fill_value=255, dtype=numpy.uint8)
     draw = PIL.ImageDraw.Draw(img)
-    for io in frame:
+    left_bound = bisect.bisect_right(timeline, start_time, key=lambda io: io.time)
+    right_bound = bisect.bisect_right(timeline, end_time, key=lambda io: io.time)
+    for io in timeline[left_bound:right_bound]:
         r1, c1 = row_col(io.offset)
         r2, c2 = row_col(io.offset + io.size - 1)
         fill=direction_color[io.direction]
@@ -82,6 +86,6 @@ def make_frame(frame):
         draw.line([(c1, r1), (c2, r2)], fill=fill, width=3)
     return numpy.asarray(img)
 
-clip = DataVideoClip(frames, make_frame, fps=frame_rate)
+clip = VideoClip(make_frame, duration=timeline[-1].time)
 
-clip.write_videofile('blkbuster.avi', codec='libx264', audio=False)
+clip.write_videofile('blkbuster.avi', codec='libx264', fps=frame_rate, audio=False)
