@@ -84,10 +84,10 @@ def make_frame(t):
         r2, c2 = row_col(io.offset + io.size - 1)
         fill=direction_color[io.direction]
         while r1 != r2:
-            draw.line([(c1, r1), (inset_col + inset_width-1, r1)], fill=fill, width=3)
+            draw.rounded_rectangle([(c1-2, r1-2), (inset_col + inset_width-1+2, r1+2)], fill=fill, radius=2)
             r1 += 1
             c1 = inset_col
-        draw.line([(c1, r1), (c2, r2)], fill=fill, width=3)
+        draw.rounded_rectangle([(c1-2, r1-2), (c2+2, r2+2)], fill=fill, radius=2)
     return numpy.asarray(img)
 
 clip = VideoClip(make_frame, duration=timeline[-1].time)
