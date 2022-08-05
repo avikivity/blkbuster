@@ -13,6 +13,21 @@ from moviepy.video.VideoClip import VideoClip, DataVideoClip
 import bisect
 import argparse
 
+themes = {
+    'light': {
+        'R': 'green',
+        'W': 'blue',
+        'D': 'red',
+        'BG': 'white',
+    },
+    'dark': {
+        'R': '#00ff21',
+        'W': '#7f92ff',
+        'D': '#ff7f7f',
+        'BG': '#121212',
+    }
+}
+
 argparser = argparse.ArgumentParser(prog='blkbuster',
                                     description='Convert blkparse output to funky videos')
 argparser.add_argument('-r', '--frame-rate', metavar='FPS', type=int, default=60)
@@ -20,6 +35,8 @@ argparser.add_argument('-x', '--width', metavar='PIXELS', type=int, default=3840
 argparser.add_argument('-y', '--height', metavar='PIXELS', type=int, default=2160)
 argparser.add_argument('-s', '--stripes', metavar='STRIPES', type=int, default=500,
                        help='how many stripes to divide the display into')
+argparser.add_argument('--theme', metavar='NAME', choices=themes.keys(), default='light',
+                       help=f'Color theme selection {list(themes.keys())}')
 argparser.add_argument('input', metavar='INPUT',
                        help='Input file (blkparse output)')
 argparser.add_argument('output', metavar='OUTPUT',
@@ -82,15 +99,12 @@ def logical_to_screen(lrow, lcol):
     return (int(inset_row + inset_height * lrow/logical_height),
             int(inset_col + inset_width * lcol/logical_width))
 
-direction_color = {
-    'R': 'green',
-    'W': 'blue',
-    'D': 'red',
-}
+theme = themes[args.theme]
+direction_color = theme
 
 direction_color = {k: PIL.ImageColor.getrgb(direction_color[k]) for k in direction_color}
 
-white = PIL.ImageColor.getrgb('white')
+background = direction_color['BG']
 
 def blend(intensity, c1, c2):
     def blend_component(n):
@@ -100,7 +114,7 @@ def blend(intensity, c1, c2):
 def make_frame(t):
     start_time = t - (fade_window_time + frame_time)
     end_time = t
-    img = PIL.Image.new(mode='RGB', size=(width, height), color='white')
+    img = PIL.Image.new(mode='RGB', size=(width, height), color=background)
     # f = numpy.full(shape=(height, width, 3), fill_value=255, dtype=numpy.uint8)
     draw = PIL.ImageDraw.Draw(img)
     left_bound = bisect.bisect_right(timeline, start_time, key=lambda io: io.time)
@@ -110,7 +124,7 @@ def make_frame(t):
         r1, c1 = logical_row_col(io.offset)
         r2, c2 = logical_row_col(io.offset + io.size - 1)
         intensity = math.exp(-(t - io.time) / fade_decay_time)
-        fill = blend(intensity, direction_color[io.direction], white)
+        fill = blend(intensity, direction_color[io.direction], background)
         while r1 != r2:
             sr1, sc1 = logical_to_screen(r1, c1)
             draw.rounded_rectangle([(sc1-rd, sr1-rd), (inset_col + inset_width-1+rd, sr1+rd)], fill=fill, radius=rd)
